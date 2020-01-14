@@ -14,9 +14,7 @@ def create_parser():
     return parser
 
 
-def instagram_get_user_ids():
-    bot = Bot()
-    bot.login(username=instagram_login, password=instagram_password)
+def instagram_get_user_ids(bot, instagram_username):
     user_id = bot.get_user_id_from_username(instagram_username)
     posts = bot.get_user_total_medias(user_id, filtration=False)
     all_comments = []
@@ -36,15 +34,15 @@ def instagram_get_user_ids():
     return filtered_user_ids
 
 
-def vk_get_posts_from_wall(limited=False):
+def vk_get_posts_from_wall(access_token, group, limited=False):
     vk_wall_get_url = 'https://api.vk.com/method/wall.get'
     offset = 0
     posts = []
     vk_wall_get_params = {
-        'domain': vk_group,
+        'domain': group,
         'count': 100,
         'offset': offset,
-        "access_token": vk_access_token,
+        "access_token": access_token,
         'v': '5.101',
     }
     response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
@@ -52,10 +50,10 @@ def vk_get_posts_from_wall(limited=False):
         return response.json()['response']['items']
     while offset < response.json()['response']['count']:
         vk_wall_get_params = {
-            'domain': vk_group,
+            'domain': group,
             'count': 100,
             'offset': offset,
-            "access_token": vk_access_token,
+            "access_token": access_token,
             'v': '5.101',
         }
         response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
@@ -64,13 +62,13 @@ def vk_get_posts_from_wall(limited=False):
     return posts
 
 
-def vk_get_comments_from_post(post, owner_id):
+def vk_get_comments_from_post(post, owner_id, access_token):
     vk_wall_get_comments_url = 'https://api.vk.com/method/wall.getComments'
     vk_wall_get_comments_params = {
         'owner_id': -owner_id,
         'post_id': post,
         'count': 1,
-        "access_token": vk_access_token,
+        "access_token": access_token,
         'v': '5.101',
     }
     response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
@@ -82,7 +80,7 @@ def vk_get_comments_from_post(post, owner_id):
             'post_id': post,
             'count': 100,
             'offset': offset,
-            "access_token": vk_access_token,
+            "access_token": access_token,
             'v': '5.101',
         }
         response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
@@ -91,10 +89,10 @@ def vk_get_comments_from_post(post, owner_id):
     return comments
 
 
-def vk_filter_comments(comments):
+def vk_filter_comments(comments, period=24 * 60 * 60 * 14):
     filtered_comments = []
     for comment in comments:
-        if comment['date'] > datetime.datetime.now().timestamp() - vk_period:
+        if comment['date'] > datetime.datetime.now().timestamp() - period:
             filtered_comments.append(comment)
     return filtered_comments
 
@@ -109,14 +107,14 @@ def vk_get_user_ids_from_comments(comments):
     return set(user_ids)
 
 
-def vk_get_user_ids_liked_post(post, owner_id):
+def vk_get_user_ids_liked_post(post, owner_id, access_token):
     vk_likes_get_list_url = 'https://api.vk.com/method/likes.getList'
     vk_likes_get_list_params = {
         'type': 'post',
         'owner_id': -owner_id,
         'item_id': post,
         'count': 1,
-        "access_token": vk_access_token,
+        "access_token": access_token,
         'v': '5.101',
     }
     response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
@@ -129,7 +127,7 @@ def vk_get_user_ids_liked_post(post, owner_id):
             'item_id': post,
             'count': 1000,
             'offset': offset,
-            "access_token": vk_access_token,
+            "access_token": access_token,
             'v': '5.101',
         }
         response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
@@ -149,11 +147,11 @@ def vk_get_group_id_from_group_name(group_name):
     return response.json()['response'][0]['id']
 
 
-def fb_get_post_ids():
-    fb_url = f'https://graph.facebook.com/{fb_group_id}'
+def fb_get_post_ids(token, group_id):
+    fb_url = f'https://graph.facebook.com/{group_id}'
     fb_params = {
         'fields': 'id,name,groups,feed',
-        'access_token': fb_token
+        'access_token': token
     }
     response = requests.get(fb_url, params=fb_params)
     fb_posts = response.json()['feed']['data']
@@ -163,10 +161,10 @@ def fb_get_post_ids():
     return fb_post_ids
 
 
-def fb_get_comment_user_ids(post_ids):
+def fb_get_comment_user_ids(token, post_ids, period=24 * 60 * 60 * 30):
     comments = []
     fb_params = {
-        'access_token': fb_token
+        'access_token': token
     }
     for post_id in post_ids:
         fb_url = f'https://graph.facebook.com/{post_id}/comments'
@@ -178,15 +176,15 @@ def fb_get_comment_user_ids(post_ids):
     for comment in comments:
         comment_date = datetime.datetime.strptime(comment['created_time'], "%Y-%m-%dT%H:%M:%S+0000")
         comment_timestamp = datetime.datetime.timestamp(comment_date)
-        if comment_timestamp > datetime.datetime.now(tz=datetime.timezone.utc).timestamp() - fb_period:
+        if comment_timestamp > datetime.datetime.now(tz=datetime.timezone.utc).timestamp() - period:
             user_ids.append(comment['from']['id'])
     return set(user_ids)
 
 
-def fb_get_reactions_user_ids(post_ids):
+def fb_get_reactions_user_ids(post_ids, token):
     reactions = []
     fb_params = {
-        'access_token': fb_token
+        'access_token': token
     }
     for post_id in post_ids:
         fb_url = f'https://graph.facebook.com/{post_id}/reactions'
@@ -222,18 +220,17 @@ if __name__ == '__main__':
     parser = create_parser()
     mode = parser.parse_args().mode
 
-
     if mode == 'vk':
         vk_period = 24 * 60 * 60 * int(os.getenv('VK_PERIOD'))
         vk_access_token = os.getenv('VK_ACCESS_TOKEN')
         vk_group = os.getenv('VK_GROUP')
         vk_group_id = vk_get_group_id_from_group_name(vk_group)
-        vk_posts = vk_get_posts_from_wall()
+        vk_posts = vk_get_posts_from_wall(vk_access_token, vk_group, vk_period)
         vk_comments = []
         for vk_post in vk_posts:
-            vk_comments.extend(vk_get_comments_from_post(vk_post[0]['id'], vk_group_id))
+            vk_comments.extend(vk_get_comments_from_post(vk_post[0]['id'], vk_group_id, access_token=vk_access_token))
         filtered_comments = vk_filter_comments(vk_comments, vk_period)
-        vk_user_ids = vk_get_user_ids_from_comments(filtered_comments)
+        vk_user_ids = vk_get_user_ids_from_comments(filtered_comments, access_token=vk_access_token)
         vk_liked_user_ids = vk_get_user_ids_liked_post(vk_posts[0]['id'])
         vk_audience = vk_liked_user_ids.intersection(vk_user_ids)
         pprint.pprint(vk_audience)
@@ -242,18 +239,20 @@ if __name__ == '__main__':
         instagram_username = os.getenv('INSTAGRAM_USERNAME')
         instagram_login = os.getenv('LOGIN_INSTAGRAM')
         instagram_password = os.getenv('PASSWORD_INSTAGRAM')
-        instagram_user_ids = instagram_get_user_ids()
+        bot = Bot()
+        bot.login(username=instagram_login, password=instagram_password)
+        instagram_user_ids = instagram_get_user_ids(bot, instagram_username)
         pprint.pprint(instagram_user_ids)
     elif mode == 'facebook':
         fb_group_id = os.getenv('FB_GROUP_ID')
         fb_token = os.getenv('FACEBOOK_TOKEN')
         fb_period = 60 * 60 * 24 * int(os.getenv('FB_PERIOD'))
         try:
-            fb_post_ids = fb_get_post_ids()
+            fb_post_ids = fb_get_post_ids(fb_token, fb_group_id)
         except KeyError:
             exit('Неверный токен фейсбука')
-        fb_comment_user_ids = fb_get_comment_user_ids(fb_post_ids)
-        fb_user_reactions = fb_get_reactions_user_ids(fb_post_ids)
+        fb_comment_user_ids = fb_get_comment_user_ids(fb_post_ids, token=fb_token, period=fb_period)
+        fb_user_reactions = fb_get_reactions_user_ids(fb_post_ids, token=fb_token)
         pprint.pprint(fb_comment_user_ids)
         pprint.pprint(fb_user_reactions)
     else:

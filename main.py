@@ -9,7 +9,8 @@ import requests
 
 def create_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', help='социальная сеть: facebook, vk или instagram')
+    parser.add_argument('mode', help='социальная сеть: facebook, vk или instagram',
+                        choices=['instagram', 'vk', 'facebook'])
     return parser
 
 
@@ -22,12 +23,9 @@ def instagram_get_user_ids():
     for post in posts:
         comments = bot.get_media_comments_all(post)
         for comment in comments:
-            comment_user_id = comment['user_id']
-            comment_created_at = comment['created_at_utc']
-            comments_all.append({
-                "comment_user_id": comment_user_id,
-                "comment_created_at": comment_created_at,
-            })
+            # comment_user_id = comment['user_id']
+            # comment_created_at = comment['created_at_utc']
+            comments_all.append(comment)
     now = datetime.datetime.now().timestamp()
     threshold = now - INSTAGRAM_PERIOD
     filtered_user_ids = {}

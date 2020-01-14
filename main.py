@@ -18,23 +18,21 @@ def instagram_get_user_ids():
     bot = Bot()
     bot.login(username=INSTAGRAM_LOGIN, password=INSTAGRAM_PASSWORD)
     user_id = bot.get_user_id_from_username(INSTAGRAM_USERNAME)
-    posts = bot.get_user_medias_total(user_id, filtration=False)
+    posts = bot.get_user_total_medias(user_id, filtration=False)
     comments_all = []
     for post in posts:
         comments = bot.get_media_comments_all(post)
         for comment in comments:
-            # comment_user_id = comment['user_id']
-            # comment_created_at = comment['created_at_utc']
             comments_all.append(comment)
     now = datetime.datetime.now().timestamp()
     threshold = now - INSTAGRAM_PERIOD
     filtered_user_ids = {}
     for comment in comments_all:
-        if comment["comment_created_at"] > threshold:
-            if comment['comment_user_id'] in filtered_user_ids.keys():
-                filtered_user_ids[comment['comment_user_id']] += 1
+        if comment["created_at_utc"] > threshold:
+            if comment['user_id'] in filtered_user_ids.keys():
+                filtered_user_ids[comment['user_id']] += 1
             else:
-                filtered_user_ids[comment['comment_user_id']] = 1
+                filtered_user_ids[comment['user_id']] = 1
     return filtered_user_ids
 
 

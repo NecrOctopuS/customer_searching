@@ -20,8 +20,7 @@ def get_instagram_user_ids(bot, instagram_username, period=90*24*60*60):
     all_comments = []
     for post in posts:
         comments = bot.get_media_comments_all(post)
-        for comment in comments:
-            all_comments.append(comment)
+        all_comments.extend(comments)
     now = datetime.datetime.now().timestamp()
     threshold = now - period
     filtered_user_ids = {}

@@ -14,7 +14,7 @@ def create_parser():
     return parser
 
 
-def get_instagram_user_ids(bot, instagram_username):
+def get_instagram_user_ids(bot, instagram_username, period=90*24*60*60):
     user_id = bot.get_user_id_from_username(instagram_username)
     posts = bot.get_user_total_medias(user_id, filtration=False)
     all_comments = []
@@ -23,7 +23,7 @@ def get_instagram_user_ids(bot, instagram_username):
         for comment in comments:
             all_comments.append(comment)
     now = datetime.datetime.now().timestamp()
-    threshold = now - instagram_period
+    threshold = now - period
     filtered_user_ids = {}
     for comment in all_comments:
         if comment["created_at_utc"] > threshold:
@@ -136,11 +136,11 @@ def get_vk_user_ids_liked_post(post, owner_id, access_token):
     return set(user_ids)
 
 
-def get_vk_group_id_from_group_name(group_name):
+def get_vk_group_id_from_group_name(token, group_name):
     vk_groups_get_by_id_url = 'https://api.vk.com/method/groups.getById'
     vk_groups_get_by_id_params = {
         'group_ids': group_name,
-        "access_token": vk_access_token,
+        "access_token": token,
         'v': '5.101',
     }
     response = requests.get(vk_groups_get_by_id_url, params=vk_groups_get_by_id_params)
@@ -224,7 +224,7 @@ def main():
         vk_period = 24 * 60 * 60 * int(os.getenv('VK_PERIOD'))
         vk_access_token = os.getenv('VK_ACCESS_TOKEN')
         vk_group = os.getenv('VK_GROUP')
-        vk_group_id = get_vk_group_id_from_group_name(vk_group)
+        vk_group_id = get_vk_group_id_from_group_name(vk_access_token, vk_group)
         vk_posts = get_vk_posts_from_wall(vk_access_token, vk_group, vk_period)
         vk_comments = []
         for vk_post in vk_posts:
@@ -241,7 +241,7 @@ def main():
         instagram_password = os.getenv('PASSWORD_INSTAGRAM')
         bot = Bot()
         bot.login(username=instagram_login, password=instagram_password)
-        instagram_user_ids = get_instagram_user_ids(bot, instagram_username)
+        instagram_user_ids = get_instagram_user_ids(bot, instagram_username, period=instagram_period)
         pprint.pprint(instagram_user_ids)
     elif mode == 'facebook':
         fb_group_id = os.getenv('FB_GROUP_ID')

@@ -215,7 +215,7 @@ def get_fb_reactions_user_ids(post_ids, token):
     return users
 
 
-if __name__ == '__main__':
+def main():
     load_dotenv()
     parser = create_parser()
     mode = parser.parse_args().mode
@@ -257,3 +257,7 @@ if __name__ == '__main__':
         pprint.pprint(fb_user_reactions)
     else:
         print('Доступны только три соц. сети: vk, instagram, facebook')
+
+
+if __name__ == '__main__':
+    main()

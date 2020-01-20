@@ -17,7 +17,7 @@ def create_parser():
 
 def get_instagram_user_ids(bot, instagram_username, period=90*24*60*60):
     user_id = bot.get_user_id_from_username(instagram_username)
-    posts = bot.get_user_medias(user_id, filtration=False) #total
+    posts = bot.get_total_user_medias(user_id, filtration=False)
     all_comments = []
     for post in posts:
         comments = bot.get_media_comments_all(post)

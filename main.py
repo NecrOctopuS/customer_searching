@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import datetime
 import pprint
 import requests
+import collections
 
 
 def create_parser():
@@ -16,20 +17,17 @@ def create_parser():
 
 def get_instagram_user_ids(bot, instagram_username, period=90*24*60*60):
     user_id = bot.get_user_id_from_username(instagram_username)
-    posts = bot.get_user_total_medias(user_id, filtration=False)
+    posts = bot.get_user_medias(user_id, filtration=False) #total
     all_comments = []
     for post in posts:
         comments = bot.get_media_comments_all(post)
         all_comments.extend(comments)
     now = datetime.datetime.now().timestamp()
     threshold = now - period
-    filtered_user_ids = {}
+    filtered_user_ids = collections.Counter()
     for comment in all_comments:
         if comment["created_at_utc"] > threshold:
-            if comment['user_id'] in filtered_user_ids.keys():
-                filtered_user_ids[comment['user_id']] += 1
-            else:
-                filtered_user_ids[comment['user_id']] = 1
+            filtered_user_ids[comment['user_id']] += 1
     return filtered_user_ids
 
 

@@ -34,7 +34,7 @@ def get_instagram_user_ids(bot, instagram_username, period=90*24*60*60):
 def get_vk_posts_from_wall(access_token, group, limited=False):
     vk_wall_get_url = 'https://api.vk.com/method/wall.get'
     offset = 0
-    posts = []
+    all_posts = []
     vk_wall_get_params = {
         'domain': group,
         'count': 100,
@@ -55,9 +55,10 @@ def get_vk_posts_from_wall(access_token, group, limited=False):
             'v': '5.101',
         }
         response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
-        posts.extend(response.json()['response']['items'])
+        posts = response.json()['response']['items']
+        all_posts.extend(posts)
         offset += 100
-    return posts
+    return all_posts
 
 
 def get_vk_comments_from_post(post, owner_id, access_token):
@@ -71,8 +72,9 @@ def get_vk_comments_from_post(post, owner_id, access_token):
     }
     response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
     offset = 0
-    comments = []
-    while offset < response.json()['response']['count']:
+    all_comments = []
+    count = response.json()['response']['count']
+    while offset < count:
         vk_wall_get_comments_params = {
             'owner_id': -owner_id,
             'post_id': post,
@@ -82,9 +84,10 @@ def get_vk_comments_from_post(post, owner_id, access_token):
             'v': '5.101',
         }
         response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
-        comments.extend(response.json()['response']['items'])
+        comments = response.json()['response']['items']
+        all_comments.extend(comments)
         offset += 100
-    return comments
+    return all_comments
 
 
 def filter_vk_comments(comments, period=24 * 60 * 60 * 14):
@@ -117,8 +120,9 @@ def get_vk_user_ids_liked_post(post, owner_id, access_token):
     }
     response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
     offset = 0
-    user_ids = []
-    while offset < response.json()['response']['count']:
+    all_user_ids = []
+    count = response.json()['response']['count']
+    while offset < count:
         vk_likes_get_list_params = {
             'type': 'post',
             'owner_id': -owner_id,
@@ -129,9 +133,10 @@ def get_vk_user_ids_liked_post(post, owner_id, access_token):
             'v': '5.101',
         }
         response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
-        user_ids.extend(response.json()['response']['items'])
+        user_ids = response.json()['response']['items']
+        all_user_ids.extend(user_ids)
         offset += 1000
-    return set(user_ids)
+    return set(all_user_ids)
 
 
 def get_vk_group_id_from_group_name(token, group_name):
@@ -142,7 +147,8 @@ def get_vk_group_id_from_group_name(token, group_name):
         'v': '5.101',
     }
     response = requests.get(vk_groups_get_by_id_url, params=vk_groups_get_by_id_params)
-    return response.json()['response'][0]['id']
+    group_id = response.json()['response'][0]['id']
+    return group_id
 
 
 def get_fb_post_ids(token, group_id):
@@ -175,7 +181,8 @@ def get_fb_comment_user_ids(token, post_ids, period=24 * 60 * 60 * 30):
         comment_date = datetime.datetime.strptime(comment['created_time'], "%Y-%m-%dT%H:%M:%S+0000")
         comment_timestamp = datetime.datetime.timestamp(comment_date)
         if comment_timestamp > datetime.datetime.now(tz=datetime.timezone.utc).timestamp() - period:
-            user_ids.append(comment['from']['id'])
+            user_id = comment['from']['id']
+            user_ids.append(user_id)
     return set(user_ids)
 
 

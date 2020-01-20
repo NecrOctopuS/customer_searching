@@ -43,9 +43,10 @@ def get_vk_posts_from_wall(access_token, group, limited=False):
         'v': '5.101',
     }
     response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
+    json_data = response.json()['response']
     if limited:
-        return response.json()['response']['items']
-    while offset < response.json()['response']['count']:
+        return json_data['items']
+    while offset < json_data['count']:
         vk_wall_get_params = {
             'domain': group,
             'count': 100,

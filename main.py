@@ -43,6 +43,7 @@ def get_vk_posts_from_wall(access_token, group, limited=False):
         'v': '5.101',
     }
     response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
+    response.raise_for_status()
     json_data = response.json()['response']
     if limited:
         return json_data['items']
@@ -55,6 +56,7 @@ def get_vk_posts_from_wall(access_token, group, limited=False):
             'v': '5.101',
         }
         response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
+        response.raise_for_status()
         posts = response.json()['response']['items']
         all_posts.extend(posts)
         offset += 100
@@ -71,6 +73,7 @@ def get_vk_comments_from_post(post, owner_id, access_token):
         'v': '5.101',
     }
     response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
+    response.raise_for_status()
     offset = 0
     all_comments = []
     count = response.json()['response']['count']
@@ -84,6 +87,7 @@ def get_vk_comments_from_post(post, owner_id, access_token):
             'v': '5.101',
         }
         response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
+        response.raise_for_status()
         comments = response.json()['response']['items']
         all_comments.extend(comments)
         offset += 100
@@ -119,6 +123,7 @@ def get_vk_user_ids_liked_post(post, owner_id, access_token):
         'v': '5.101',
     }
     response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
+    response.raise_for_status()
     offset = 0
     all_user_ids = []
     count = response.json()['response']['count']
@@ -133,6 +138,7 @@ def get_vk_user_ids_liked_post(post, owner_id, access_token):
             'v': '5.101',
         }
         response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
+        response.raise_for_status()
         user_ids = response.json()['response']['items']
         all_user_ids.extend(user_ids)
         offset += 1000
@@ -147,6 +153,7 @@ def get_vk_group_id_from_group_name(token, group_name):
         'v': '5.101',
     }
     response = requests.get(vk_groups_get_by_id_url, params=vk_groups_get_by_id_params)
+    response.raise_for_status()
     group_id = response.json()['response'][0]['id']
     return group_id
 
@@ -158,6 +165,7 @@ def get_fb_post_ids(token, group_id):
         'access_token': token
     }
     response = requests.get(fb_url, params=fb_params)
+    response.raise_for_status()
     fb_posts = response.json()['feed']['data']
     fb_post_ids = []
     for post in fb_posts:
@@ -173,6 +181,7 @@ def get_fb_comment_user_ids(token, post_ids, period=24 * 60 * 60 * 30):
     for post_id in post_ids:
         fb_url = f'https://graph.facebook.com/{post_id}/comments'
         response = requests.get(fb_url, params=fb_params)
+        response.raise_for_status()
         post_comments = response.json()['data']
         if post_comments:
             comments.extend(post_comments)
@@ -186,7 +195,7 @@ def get_fb_comment_user_ids(token, post_ids, period=24 * 60 * 60 * 30):
     return set(user_ids)
 
 
-def get_fb_reactions_user_ids(post_ids, token):
+def get_fb_reactions_user_ids(token, post_ids):
     reactions = []
     fb_params = {
         'access_token': token
@@ -194,6 +203,7 @@ def get_fb_reactions_user_ids(post_ids, token):
     for post_id in post_ids:
         fb_url = f'https://graph.facebook.com/{post_id}/reactions'
         response = requests.get(fb_url, params=fb_params)
+        response.raise_for_status()
         post_reactions = response.json()['data']
         if post_reactions:
             reactions.extend(post_reactions)
@@ -229,14 +239,23 @@ def main():
         vk_period = 24 * 60 * 60 * int(os.getenv('VK_PERIOD'))
         vk_access_token = os.getenv('VK_ACCESS_TOKEN')
         vk_group = os.getenv('VK_GROUP')
-        vk_group_id = get_vk_group_id_from_group_name(vk_access_token, vk_group)
-        vk_posts = get_vk_posts_from_wall(vk_access_token, vk_group, vk_period)
+        try:
+            vk_group_id = get_vk_group_id_from_group_name(vk_access_token, vk_group)
+        except requests.exceptions.HTTPError as error:
+            print(error.response.json()['error']['error_user_msg'])
+        try:
+            vk_posts = get_vk_posts_from_wall(vk_access_token, vk_group)
+        except requests.exceptions.HTTPError as error:
+            print(error.response.json()['error']['error_user_msg'])
         vk_comments = []
         for vk_post in vk_posts:
-            vk_comments.extend(get_vk_comments_from_post(vk_post[0]['id'], vk_group_id, access_token=vk_access_token))
+            vk_comments.extend(get_vk_comments_from_post(vk_post['id'], vk_group_id, access_token=vk_access_token))
         filtered_comments = filter_vk_comments(vk_comments, vk_period)
-        vk_user_ids = get_vk_user_ids_from_comments(filtered_comments, access_token=vk_access_token)
-        vk_liked_user_ids = get_vk_user_ids_liked_post(vk_posts[0]['id'])
+        vk_user_ids = get_vk_user_ids_from_comments(filtered_comments)
+        try:
+            vk_liked_user_ids = get_vk_user_ids_liked_post(vk_posts[0]['id'], vk_group_id, access_token=vk_access_token)
+        except requests.exceptions.HTTPError as error:
+            print(error.response.json()['error']['error_user_msg'])
         vk_audience = vk_liked_user_ids.intersection(vk_user_ids)
         pprint.pprint(vk_audience)
     elif mode == 'instagram':
@@ -256,8 +275,16 @@ def main():
             fb_post_ids = get_fb_post_ids(fb_token, fb_group_id)
         except KeyError:
             exit('Неверный токен фейсбука')
-        fb_comment_user_ids = get_fb_comment_user_ids(fb_post_ids, token=fb_token, period=fb_period)
-        fb_user_reactions = get_fb_reactions_user_ids(fb_post_ids, token=fb_token)
+        except requests.exceptions.HTTPError as error:
+            print(error.response.json()['error']['error_user_msg'])
+        try:
+            fb_comment_user_ids = get_fb_comment_user_ids(fb_token, fb_post_ids, period=fb_period)
+        except requests.exceptions.HTTPError as error:
+            print(error.response.json()['error']['error_user_msg'])
+        try:
+            fb_user_reactions = get_fb_reactions_user_ids(fb_token, fb_post_ids)
+        except requests.exceptions.HTTPError as error:
+            print(error.response.json()['error']['error_user_msg'])
         pprint.pprint(fb_comment_user_ids)
         pprint.pprint(fb_user_reactions)
     else:

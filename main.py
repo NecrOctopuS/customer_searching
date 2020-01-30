@@ -15,7 +15,7 @@ def create_parser():
     return parser
 
 
-def get_instagram_user_ids(bot, instagram_username, period=90*24*60*60):
+def get_instagram_user_ids(bot, instagram_username, period=90 * 24 * 60 * 60):
     user_id = bot.get_user_id_from_username(instagram_username)
     posts = bot.get_total_user_medias(user_id)
     all_comments = []
@@ -33,19 +33,8 @@ def get_vk_posts_from_wall(access_token, group, limited=False):
     vk_wall_get_url = 'https://api.vk.com/method/wall.get'
     offset = 0
     all_posts = []
-    vk_wall_get_params = {
-        'domain': group,
-        'count': 100,
-        'offset': offset,
-        "access_token": access_token,
-        'v': '5.101',
-    }
-    response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
-    response.raise_for_status()
-    json_data = response.json()['response']
+    post_count = 0
     if limited:
-        return json_data['items']
-    while offset < json_data['count']:
         vk_wall_get_params = {
             'domain': group,
             'count': 100,
@@ -55,27 +44,32 @@ def get_vk_posts_from_wall(access_token, group, limited=False):
         }
         response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
         response.raise_for_status()
-        posts = response.json()['response']['items']
+        json_data = response.json()['response']
+        return json_data['items']
+    while offset <= post_count:
+        vk_wall_get_params = {
+            'domain': group,
+            'count': 100,
+            'offset': offset,
+            "access_token": access_token,
+            'v': '5.101',
+        }
+        response = requests.get(vk_wall_get_url, params=vk_wall_get_params)
+        response.raise_for_status()
+        json_data = response.json()['response']
+        posts = json_data['items']
         all_posts.extend(posts)
         offset += 100
+        post_count = json_data['count']
     return all_posts
 
 
 def get_vk_comments_from_post(post, owner_id, access_token):
     vk_wall_get_comments_url = 'https://api.vk.com/method/wall.getComments'
-    vk_wall_get_comments_params = {
-        'owner_id': -owner_id,
-        'post_id': post,
-        'count': 1,
-        "access_token": access_token,
-        'v': '5.101',
-    }
-    response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
-    response.raise_for_status()
     offset = 0
+    comments_count = 0
     all_comments = []
-    count = response.json()['response']['count']
-    while offset < count:
+    while offset <= comments_count:
         vk_wall_get_comments_params = {
             'owner_id': -owner_id,
             'post_id': post,
@@ -86,7 +80,9 @@ def get_vk_comments_from_post(post, owner_id, access_token):
         }
         response = requests.get(vk_wall_get_comments_url, params=vk_wall_get_comments_params)
         response.raise_for_status()
-        comments = response.json()['response']['items']
+        json_data = response.json()['response']
+        comments = json_data['items']
+        comments_count = json_data['count']
         all_comments.extend(comments)
         offset += 100
     return all_comments
@@ -112,20 +108,10 @@ def get_vk_user_ids_from_comments(comments):
 
 def get_vk_user_ids_liked_post(post, owner_id, access_token):
     vk_likes_get_list_url = 'https://api.vk.com/method/likes.getList'
-    vk_likes_get_list_params = {
-        'type': 'post',
-        'owner_id': -owner_id,
-        'item_id': post,
-        'count': 1,
-        "access_token": access_token,
-        'v': '5.101',
-    }
-    response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
-    response.raise_for_status()
     offset = 0
+    count_user_ids = 0
     all_user_ids = []
-    count = response.json()['response']['count']
-    while offset < count:
+    while offset <= count_user_ids:
         vk_likes_get_list_params = {
             'type': 'post',
             'owner_id': -owner_id,
@@ -137,7 +123,9 @@ def get_vk_user_ids_liked_post(post, owner_id, access_token):
         }
         response = requests.get(vk_likes_get_list_url, params=vk_likes_get_list_params)
         response.raise_for_status()
-        user_ids = response.json()['response']['items']
+        json_data = response.json()['response']
+        user_ids = json_data['items']
+        count_user_ids = json_data['count']
         all_user_ids.extend(user_ids)
         offset += 1000
     return set(all_user_ids)

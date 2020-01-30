@@ -17,18 +17,16 @@ def create_parser():
 
 def get_instagram_user_ids(bot, instagram_username, period=90*24*60*60):
     user_id = bot.get_user_id_from_username(instagram_username)
-    posts = bot.get_total_user_medias(user_id, filtration=False)
+    posts = bot.get_total_user_medias(user_id)
     all_comments = []
     for post in posts:
         comments = bot.get_media_comments_all(post)
         all_comments.extend(comments)
     now = datetime.datetime.now().timestamp()
     threshold = now - period
-    filtered_user_ids = collections.Counter()
-    for comment in all_comments:
-        if comment["created_at_utc"] > threshold:
-            filtered_user_ids[comment['user_id']] += 1
-    return filtered_user_ids
+    filtered_user_ids = [comment['user_id'] for comment in all_comments if comment["created_at_utc"] > threshold]
+    users_count = collections.Counter(filtered_user_ids)
+    return users_count
 
 
 def get_vk_posts_from_wall(access_token, group, limited=False):
